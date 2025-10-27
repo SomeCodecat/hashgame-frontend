@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Hash H10A - Prototype UI</title>
+    <style>
+      body {
+        font-family: system-ui, Segoe UI, Roboto, Arial;
+        margin: 18px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-bottom: 18px;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 6px;
+        text-align: left;
+      }
+      th {
+        background: #f2f2f2;
+      }
+      .controls {
+        margin-bottom: 12px;
+      }
+      pre {
+        background: #111;
+        color: #efe;
+        padding: 8px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Hash H10A — Prototype UI</h1>
+    <div class="controls">
+      <button id="btnScrape">Fetch fresh data (scrape)</button>
+      <button id="btnReload">Reload state</button>
+      <span id="status" style="margin-left: 12px; color: #555"></span>
+    </div>
+
+    <h2>Active Hashes</h2>
+    <div id="active">
+      <em>Loading…</em>
+    </div>
+
+    <h2>Longest Chain</h2>
+    <div id="chain">
+      <em>Loading…</em>
+    </div>
+
+    <h2>Summary</h2>
+    <div id="summary"><em>Loading…</em></div>
+
+    <h2>Assets</h2>
+    <div id="assets"><em>Loading…</em></div>
+
+    <script>
+      const statusEl = document.getElementById("status");
+      async function setStatus(t) {
+        statusEl.textContent = t;
+      }
+
+      async function loadState() {
+        setStatus("loading /state...");
+        try {
+          const r = await fetch("/state");
+          if (!r.ok) throw new Error("no state");
+          const j = await r.json();
+          render(j);
+          setStatus(
+            "loaded " + (j.active_hashes?.length || 0) + " active hashes"
+          );
+        } catch (e) {
+          document.getElementById("active").innerHTML =
+            '<em>state missing — press "Fetch fresh data"</em>';
+          setStatus("no state");
+        }
+      }
+
+      async function scrapeNow() {
+        setStatus("scraping...");
+        const r = await fetch("/scrape", { method: "POST" });
+        if (!r.ok) {
+          setStatus("scrape failed");
+          return;
+        }
+        const j = await r.json();
+        setStatus("scrape ok — " + JSON.stringify(j));
+        await loadState();
+      }
+
+      function mkTable(rows) {
+        if (!rows || rows.length === 0) return "<em>no rows</em>";
+        const cols = rows[0].cells
+          ? rows[0].cells.length
+          : Math.max(...rows.map((r) => Object.keys(r).length));
+        let html = "<table><thead><tr>";
+        for (let i = 0; i < cols; i++) html += `<th>c${i + 1}</th>`;
+        html += "</tr></thead><tbody>";
+        for (const r of rows) {
+          const cells = r.cells || [];
+          html += "<tr>";
+          for (let i = 0; i < cols; i++) html += `<td>${cells[i] ?? ""}</td>`;
+          html += "</tr>";
+        }
+        html += "</tbody></table>";
+        return html;
+      }
+
+      function render(j) {
+        document.getElementById("active").innerHTML = mkTable(
+          j.active_hashes || []
+        );
+        const chain = j.longest_chain || {};
+        let chHtml = "";
+        if (chain.root_hash)
+          chHtml += `<p><strong>Root:</strong> <code>${chain.root_hash}</code></p>`;
+        chHtml += mkTable(chain.entries || []);
+        document.getElementById("chain").innerHTML = chHtml;
+        document.getElementById("summary").innerHTML = mkTable(j.summary || []);
+        const assets = j.assets || [];
+        document.getElementById("assets").innerHTML = assets
+          .map(
+            (a) => `<div><a href="${a.url}" target="_blank">${a.name}</a></div>`
+          )
+          .join("");
+      }
+
+      document.getElementById("btnScrape").addEventListener("click", scrapeNow);
+      document.getElementById("btnReload").addEventListener("click", loadState);
+
+      loadState();
+    </script>
+  </body>
+</html>
