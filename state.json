@@ -1,0 +1,520 @@
+{
+  "metadata": {
+    "fetched_at": "2025-10-28T00:51:22.369168Z",
+    "source": "http://hash.h10a.de/"
+  },
+  "active_hashes": {
+    "headers": [
+      "Hash",
+      "Length",
+      "Submitted",
+      "Count"
+    ],
+    "rows": [
+      {
+        "cells": [
+          "0000000000a777d2cf9842d6d0f6d85cb30474faf8a23a83683bd539124010cb",
+          "2096",
+          "buttcoin-B6",
+          "2180"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ],
+        "hash": "0000000000a777d2cf9842d6d0f6d85cb30474faf8a23a83683bd539124010cb"
+      },
+      {
+        "cells": [
+          "000000000085563d0c327b672cccfc1d12f06ebeff6b2dc4bcd4c33e1a8b172c",
+          "2097",
+          "Miner-No1",
+          "2181"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ],
+        "hash": "000000000085563d0c327b672cccfc1d12f06ebeff6b2dc4bcd4c33e1a8b172c"
+      },
+      {
+        "cells": [
+          "0000000000b33e6fd6a11d55d22e0d6bf2a38a24c3abe5c6ed49c5e600916237",
+          "2098",
+          "MNR-B6",
+          "2183"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ],
+        "hash": "0000000000b33e6fd6a11d55d22e0d6bf2a38a24c3abe5c6ed49c5e600916237"
+      },
+      {
+        "cells": [
+          "0000000000295331e9f9fed302a95867a62ac6a020a2f2693cf57ac05fe0756c",
+          "2099",
+          "MNR-B6",
+          "2184"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ],
+        "hash": "0000000000295331e9f9fed302a95867a62ac6a020a2f2693cf57ac05fe0756c"
+      },
+      {
+        "cells": [
+          "00000000002348c51e1ae596dbb3b2afe45b8cc5d5dc599012efeadbe8d552a1",
+          "2096",
+          "lm-attack",
+          "2209"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ],
+        "hash": "00000000002348c51e1ae596dbb3b2afe45b8cc5d5dc599012efeadbe8d552a1"
+      },
+      {
+        "cells": [
+          "0000000000b69615e837e2174f7f0cb92a187c44270f492bf3f48f8aa2b73913",
+          "2097",
+          "lm-attack",
+          "2210"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ],
+        "hash": "0000000000b69615e837e2174f7f0cb92a187c44270f492bf3f48f8aa2b73913"
+      },
+      {
+        "cells": [
+          "0000000000f12c69dfa7fe61f31325e02f51144970b179987f9821df4672f620",
+          "2098",
+          "lm-attack",
+          "2211"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ],
+        "hash": "0000000000f12c69dfa7fe61f31325e02f51144970b179987f9821df4672f620"
+      },
+      {
+        "cells": [
+          "0000000000aa2924552aab2b6b4b09822475ecc8b51eaaebb018243c2a4ab661",
+          "2099",
+          "lm-attack",
+          "2212"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ],
+        "hash": "0000000000aa2924552aab2b6b4b09822475ecc8b51eaaebb018243c2a4ab661"
+      },
+      {
+        "cells": [
+          "000000000053bbf29392f420d3665ec2ebf49d3d69175e64d77dab40e1167669",
+          "2100",
+          "lm-attack",
+          "2213"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ],
+        "hash": "000000000053bbf29392f420d3665ec2ebf49d3d69175e64d77dab40e1167669"
+      },
+      {
+        "cells": [
+          "00000000005bc6035e087961218b59262ccc931299bbe448469174223e413f07",
+          "2101",
+          "lm-attack",
+          "2214"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ],
+        "hash": "00000000005bc6035e087961218b59262ccc931299bbe448469174223e413f07"
+      }
+    ]
+  },
+  "longest_chain": {
+    "root_hash": "00000000005bc6035e087961218b59262ccc931299bbe448469174223e413f07",
+    "entries": [
+      {
+        "cells": [
+          "ultra-hanagpu08",
+          "1",
+          "1",
+          "100%"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      {
+        "cells": [
+          "J-B4",
+          "1",
+          "1",
+          "100%"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      {
+        "cells": [
+          "Gaming-B4",
+          "1",
+          "4",
+          "25%"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      {
+        "cells": [
+          "JPPC",
+          "1",
+          "1",
+          "100%"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      {
+        "cells": [
+          "Starkiller2020-B",
+          "1",
+          "2",
+          "50%"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      {
+        "cells": [
+          "Initial",
+          "1",
+          "1",
+          "100%"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      {
+        "cells": [
+          "Mastopi-B6",
+          "2",
+          "3",
+          "67%"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      {
+        "cells": [
+          "Simsala-B4",
+          "2",
+          "6",
+          "33%"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      {
+        "cells": [
+          "MusenMiner",
+          "2",
+          "2",
+          "100%"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      {
+        "cells": [
+          "lm-prepare",
+          "3",
+          "4",
+          "75%"
+        ],
+        "cell_colors": [
+          "lightgreen",
+          "lightgreen",
+          "lightgreen",
+          "lightgreen"
+        ]
+      },
+      {
+        "cells": [
+          "Starkiller2020",
+          "4",
+          "4",
+          "100%"
+        ],
+        "cell_colors": [
+          "lightgreen",
+          "lightgreen",
+          "lightgreen",
+          "lightgreen"
+        ]
+      },
+      {
+        "cells": [
+          "MNR-B6",
+          "5",
+          "15",
+          "33%"
+        ],
+        "cell_colors": [
+          "lightgreen",
+          "lightgreen",
+          "lightgreen",
+          "lightgreen"
+        ]
+      },
+      {
+        "cells": [
+          "2theMoon",
+          "8",
+          "24",
+          "33%"
+        ],
+        "cell_colors": [
+          "lightgreen",
+          "lightgreen",
+          "lightgreen",
+          "lightgreen"
+        ]
+      },
+      {
+        "cells": [
+          "buttcoin-B6",
+          "10",
+          "11",
+          "91%"
+        ],
+        "cell_colors": [
+          "lightgreen",
+          "lightgreen",
+          "lightgreen",
+          "lightgreen"
+        ]
+      },
+      {
+        "cells": [
+          "ToxicMiner-B1",
+          "19",
+          "20",
+          "95%"
+        ],
+        "cell_colors": [
+          "lightgreen",
+          "lightgreen",
+          "lightgreen",
+          "lightgreen"
+        ]
+      },
+      {
+        "cells": [
+          "lm-attack",
+          "28",
+          "31",
+          "90%"
+        ],
+        "cell_colors": [
+          "lightgreen",
+          "lightgreen",
+          "lightgreen",
+          "lightgreen"
+        ]
+      },
+      {
+        "cells": [
+          "lm-B2",
+          "32",
+          "32",
+          "100%"
+        ],
+        "cell_colors": [
+          "lightgreen",
+          "lightgreen",
+          "lightgreen",
+          "lightgreen"
+        ]
+      },
+      {
+        "cells": [
+          "lm-B1",
+          "256",
+          "275",
+          "93%"
+        ],
+        "cell_colors": [
+          "lightgreen",
+          "lightgreen",
+          "lightgreen",
+          "lightgreen"
+        ]
+      },
+      {
+        "cells": [
+          "Miner-No1",
+          "1725",
+          "1754",
+          "98%"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    ],
+    "headers": [
+      "User",
+      "Count",
+      "Tries",
+      "Efficiency"
+    ]
+  },
+  "summary": {
+    "headers": [
+      "Group",
+      "Count",
+      "Tries",
+      "Efficiency"
+    ],
+    "rows": [
+      {
+        "cells": [
+          "B4",
+          "4",
+          "12",
+          "33%"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      {
+        "cells": [
+          "B6",
+          "17",
+          "38",
+          "45%"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      {
+        "cells": [
+          "B2",
+          "32",
+          "32",
+          "100%"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ]
+      },
+      {
+        "cells": [
+          "B1",
+          "275",
+          "295",
+          "93%"
+        ],
+        "cell_colors": [
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    ]
+  },
+  "assets": [
+    {
+      "name": "A visualization of a recent state of the tree.",
+      "url": "http://hash.h10a.de/tree.pdf"
+    },
+    {
+      "name": "HashClient.java",
+      "url": "http://hash.h10a.de/HashClient.java"
+    }
+  ],
+  "difficulty": "Difficulty: 44 Bit - SHA-256 - 11.3 GHash/s - 199s/block"
+}
