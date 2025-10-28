@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "fetched_at": "2025-10-28T00:51:22.369168Z",
+    "fetched_at": "2025-10-28T00:54:12.280231Z",
     "source": "http://hash.h10a.de/"
   },
   "active_hashes": {
@@ -516,5 +516,5 @@
       "url": "http://hash.h10a.de/HashClient.java"
     }
   ],
-  "difficulty": "Difficulty: 44 Bit - SHA-256 - 11.3 GHash/s - 199s/block"
+  "difficulty": "Difficulty: 44 Bit - SHA-256 - 9.9 GHash/s - 199s/block"
 }
