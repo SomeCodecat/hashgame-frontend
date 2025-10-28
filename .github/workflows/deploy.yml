@@ -22,11 +22,6 @@ jobs:
           persist-credentials: true
           fetch-depth: 0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -40,23 +35,12 @@ jobs:
         run: |
           python scrape_hash_h10a.py
 
-      - name: Build frontend
-        run: |
-          if [ -d frontend ]; then
-            cd frontend
-            npm ci
-            npm run build
-          fi
-
       - name: Prepare deploy directory
         run: |
           rm -rf out
           mkdir out
-          if [ -d frontend/dist ]; then
-            cp -a frontend/dist/. out/
-          else
-            cp -a static/. out/
-          fi
+          # Use static page (not React frontend for now)
+          cp -a static/. out/
           # Copy the scraped state.json to be available at /state
           if [ -f data/state.json ]; then
             cp data/state.json out/state.json
