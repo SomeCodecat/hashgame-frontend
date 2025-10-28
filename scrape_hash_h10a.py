@@ -22,6 +22,7 @@ def text_or_none(el):
 
 def parse_active_hashes(soup):
     active = []
+    headers = []
     # look for heading containing "Active Hashes"
     heading = soup.find(lambda tag: tag.name in ("h1", "h2", "h3", "b") and "Active Hashes" in tag.get_text())
     if not heading:
@@ -31,17 +32,45 @@ def parse_active_hashes(soup):
         return active
 
     table = heading.find_next("table")
+    def cell_info(el):
+        # returns (text, color)
+        text = el.get_text(strip=True)
+        color = None
+        if el.has_attr('bgcolor'):
+            color = el['bgcolor']
+        elif el.has_attr('style'):
+            m = re.search(r'background(?:-color)?\s*:\s*([^;]+)', el['style'], re.IGNORECASE)
+            if m:
+                color = m.group(1).strip()
+        return text, color
+
     if table:
+        # try to extract headers from first row if it contains th
+        first_ths = table.find_all('th')
+        if first_ths:
+            headers = [th.get_text(strip=True) for th in first_ths]
         for tr in table.find_all("tr"):
-            cols = [td.get_text(strip=True) for td in tr.find_all(["td", "th"])]
+            cols = tr.find_all(["td", "th"])
             if not cols:
                 continue
-            h = next((c for c in cols if re.fullmatch(r"[0-9a-f]{64}", c, re.IGNORECASE)), None)
-            row = {"cells": cols}
+            # skip a pure header row if we already extracted headers
+            if headers and all(el.name == 'th' for el in cols):
+                continue
+            cells = []
+            colors = []
+            for td in cols:
+                t, c = cell_info(td)
+                cells.append(t)
+                colors.append(c)
+            if not cells:
+                continue
+            h = next((c for c in cells if re.fullmatch(r"[0-9a-f]{64}", c, re.IGNORECASE)), None)
+            row = {"cells": cells, "cell_colors": colors}
             if h:
                 row["hash"] = h
             active.append(row)
-        return active
+        # return both rows and headers (headers may be empty)
+        return {"headers": headers, "rows": active} if headers else active
 
     # preformatted fallback
     pre = heading.find_next("pre")
@@ -73,11 +102,32 @@ def parse_longest_chain(soup):
             if m:
                 root = m.group(1)
         if getattr(node, "name", None) == "table":
+            # extract headers if any
+            ths = node.find_all('th')
+            headers = [th.get_text(strip=True) for th in ths] if ths else []
             for tr in node.find_all("tr"):
-                cols = [td.get_text(strip=True) for td in tr.find_all(["td", "th"])]
-                if cols:
-                    entries.append({"cells": cols})
-            break
+                cols = tr.find_all(["td", "th"])
+                if not cols:
+                    continue
+                # skip header-only row if headers were found
+                if headers and all(el.name == 'th' for el in cols):
+                    continue
+                cells = []
+                colors = []
+                for td in cols:
+                    t = td.get_text(strip=True)
+                    c = None
+                    if td.has_attr('bgcolor'):
+                        c = td['bgcolor']
+                    elif td.has_attr('style'):
+                        m = re.search(r'background(?:-color)?\s*:\s*([^;]+)', td['style'], re.IGNORECASE)
+                        if m:
+                            c = m.group(1).strip()
+                    cells.append(t)
+                    colors.append(c)
+                if cells:
+                    entries.append({"cells": cells, "cell_colors": colors})
+            return {"root_hash": root, "entries": entries, "headers": headers}
         node = node.next_sibling
         steps += 1
 
@@ -92,11 +142,33 @@ def parse_summary(soup):
     if not table:
         return []
     rows = []
+    headers = []
+    ths = table.find_all('th')
+    if ths:
+        headers = [th.get_text(strip=True) for th in ths]
     for tr in table.find_all("tr"):
-        cols = [td.get_text(strip=True) for td in tr.find_all(["td", "th"])]
-        if cols:
-            rows.append({"cells": cols})
-    return rows
+        cols = tr.find_all(["td", "th"])
+        if not cols:
+            continue
+        # if headers exist and this row is header-only, skip it
+        if headers and all(el.name == 'th' for el in cols):
+            continue
+        cells = []
+        colors = []
+        for td in cols:
+            t = td.get_text(strip=True)
+            c = None
+            if td.has_attr('bgcolor'):
+                c = td['bgcolor']
+            elif td.has_attr('style'):
+                m = re.search(r'background(?:-color)?\s*:\s*([^;]+)', td['style'], re.IGNORECASE)
+                if m:
+                    c = m.group(1).strip()
+            cells.append(t)
+            colors.append(c)
+        if cells:
+            rows.append({"cells": cells, "cell_colors": colors})
+    return {"headers": headers, "rows": rows} if headers else rows
 
 
 def find_assets(soup):
@@ -120,6 +192,45 @@ def scrape():
         "summary": parse_summary(soup),
         "assets": find_assets(soup),
     }
+    # Try to find a difficulty string anywhere on the page if not in summary
+    try:
+        if not data.get('difficulty'):
+            text = soup.get_text("\n", strip=True)
+            # First look for explicit "Difficulty" lines
+            for line in text.splitlines():
+                if 'difficulty' in line.lower():
+                    data['difficulty'] = line.strip()
+                    break
+            # Otherwise look for a line that contains 'Bit' and 'SHA' (heuristic)
+            if not data.get('difficulty'):
+                for line in text.splitlines():
+                    if 'bit' in line.lower() and ('sha' in line.lower() or 'ghash' in line.lower() or 's/block' in line.lower()):
+                        data['difficulty'] = line.strip()
+                        break
+    except Exception:
+        pass
+    # try to extract a single difficulty value from the summary table if present
+    try:
+        summary = data.get('summary')
+        difficulty = None
+        rows = []
+        if isinstance(summary, dict) and summary.get('rows'):
+            rows = summary.get('rows')
+        elif isinstance(summary, list):
+            rows = summary
+        for rrow in rows:
+            # rrow may be {'cells': [...]} or similar
+            cells = rrow.get('cells') if isinstance(rrow, dict) else None
+            if cells and len(cells) >= 2:
+                key = (cells[0] or '').strip().lower()
+                if 'difficulty' in key or key.startswith('diff'):
+                    difficulty = cells[1].strip()
+                    break
+        if difficulty is not None:
+            data['difficulty'] = difficulty
+    except Exception:
+        # don't fail scraping for this optional value
+        pass
     return data
 
 

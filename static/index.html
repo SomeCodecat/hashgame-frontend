@@ -41,6 +41,48 @@
       <button id="btnReload">Reload state</button>
       <span id="status" style="margin-left: 12px; color: #555"></span>
     </div>
+    <div
+      style="
+        margin-bottom: 12px;
+        padding: 8px;
+        background: #f9f9f9;
+        border-left: 3px solid #4a90e2;
+        font-size: 0.9em;
+        color: #555;
+      "
+    >
+      <strong>CORS Proxy:</strong> <span id="proxyInfo">Loading...</span>
+      <div style="margin-top: 6px">
+        <button
+          id="btnProxyCorsProxy"
+          style="font-size: 0.85em; padding: 4px 8px; margin-right: 6px"
+        >
+          corsproxy.io
+        </button>
+        <button
+          id="btnProxyAllOrigins"
+          style="font-size: 0.85em; padding: 4px 8px; margin-right: 6px"
+        >
+          allorigins.win
+        </button>
+        <button id="btnProxyNone" style="font-size: 0.85em; padding: 4px 8px">
+          Direct (no proxy)
+        </button>
+      </div>
+      <div style="margin-top: 4px; font-size: 0.85em; color: #777">
+        Click a button to switch proxies, or add
+        <code>?proxy=https://your-proxy/?</code> to the URL for custom proxies.
+      </div>
+    </div>
+    <div
+      id="difficulty"
+      style="
+        margin-bottom: 12px;
+        color: #333;
+        font-weight: bold;
+        font-size: 1.1em;
+      "
+    ></div>
 
     <h2>Active Hashes</h2>
     <div id="active">
@@ -64,6 +106,246 @@
         statusEl.textContent = t;
       }
 
+      // Helper: read query params
+      function qp(name) {
+        const u = new URL(location.href);
+        return u.searchParams.get(name);
+      }
+
+      // Client-side scraper (lightweight copy of frontend/src/scrapeClient.js)
+      async function fetchRemoteState({
+        url = "http://hash.h10a.de/",
+        corsProxy = "",
+      } = {}) {
+        const target = corsProxy
+          ? `${corsProxy}${encodeURIComponent(url)}`
+          : url;
+        const res = await fetch(target);
+        if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+        const ct = res.headers.get("content-type") || "";
+        if (ct.includes("application/json")) return await res.json();
+        const html = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+
+        function findHeading(text) {
+          const tags = ["h1", "h2", "h3", "b"];
+          for (const t of tags) {
+            const els = Array.from(doc.getElementsByTagName(t));
+            for (const el of els)
+              if ((el.textContent || "").includes(text)) return el;
+          }
+          return null;
+        }
+
+        function tableToRows(table) {
+          const rows = [];
+          for (const tr of Array.from(table.querySelectorAll("tr"))) {
+            const cells = [];
+            const cell_colors = [];
+            for (const td of Array.from(tr.querySelectorAll("th,td"))) {
+              cells.push((td.textContent || "").trim());
+              // Extract background color from bgcolor attribute or style
+              let color = null;
+              if (td.hasAttribute("bgcolor")) {
+                color = td.getAttribute("bgcolor");
+              } else if (td.hasAttribute("style")) {
+                const style = td.getAttribute("style");
+                const match = style.match(
+                  /background(?:-color)?\s*:\s*([^;]+)/i
+                );
+                if (match) color = match[1].trim();
+              }
+              cell_colors.push(color);
+            }
+            if (cells.length) rows.push({ cells, cell_colors });
+          }
+          return rows;
+        }
+
+        function parseActiveHashes() {
+          const heading = findHeading("Active Hashes");
+          if (!heading) {
+            const text = doc.body.textContent || "";
+            const re = /\b[0-9a-f]{64}\b/gi;
+            const out = [];
+            let m;
+            while ((m = re.exec(text))) out.push({ hash: m[0] });
+            return out;
+          }
+          let node = heading.nextElementSibling;
+          while (node) {
+            if (node.tagName && node.tagName.toLowerCase() === "table") {
+              const table = node;
+              const headers = [];
+              // Extract headers from first row if it contains th elements
+              const firstThs = Array.from(table.querySelectorAll("th"));
+              if (firstThs.length > 0) {
+                for (const th of firstThs) {
+                  headers.push((th.textContent || "").trim());
+                }
+              }
+              const rows = tableToRows(table);
+              // Filter out header row if we already extracted headers
+              const filteredRows = rows.filter((row, idx) => {
+                if (!headers.length) return true;
+                // Check if this row is all th elements (header row)
+                const tr = table.querySelectorAll("tr")[idx];
+                if (!tr) return true;
+                const cells = Array.from(tr.querySelectorAll("td,th"));
+                return !cells.every((c) => c.tagName.toLowerCase() === "th");
+              });
+              return headers.length > 0
+                ? { headers, rows: filteredRows }
+                : filteredRows;
+            }
+            node = node.nextElementSibling;
+          }
+          return [];
+        }
+
+        function parseLongestChain() {
+          const heading = findHeading("Longest Chain");
+          if (!heading) return { root_hash: null, entries: [] };
+          let root = null;
+          let node = heading.nextElementSibling;
+          while (node) {
+            const text = node.textContent || "";
+            const m = text.match(/([0-9a-f]{64})/i);
+            if (m && !root) root = m[1];
+            if (node.tagName && node.tagName.toLowerCase() === "table") {
+              const table = node;
+              const headers = [];
+              // Extract headers from first row if it contains th elements
+              const firstThs = Array.from(table.querySelectorAll("th"));
+              if (firstThs.length > 0) {
+                for (const th of firstThs) {
+                  headers.push((th.textContent || "").trim());
+                }
+              }
+              const rows = tableToRows(table);
+              // Filter out header row if we already extracted headers
+              const filteredRows = rows.filter((row, idx) => {
+                if (!headers.length) return true;
+                const tr = table.querySelectorAll("tr")[idx];
+                if (!tr) return true;
+                const cells = Array.from(tr.querySelectorAll("td,th"));
+                return !cells.every((c) => c.tagName.toLowerCase() === "th");
+              });
+              return {
+                root_hash: root,
+                headers: headers.length > 0 ? headers : null,
+                entries: headers.length > 0 ? filteredRows : rows,
+              };
+            }
+            node = node.nextElementSibling;
+          }
+          return { root_hash: root, entries: [] };
+        }
+
+        function parseSummary() {
+          const heading = findHeading("Summary");
+          if (!heading) return [];
+          let node = heading.nextElementSibling;
+          while (node) {
+            if (node.tagName && node.tagName.toLowerCase() === "table") {
+              const table = node;
+              const headers = [];
+              // Extract headers from first row if it contains th elements
+              const firstThs = Array.from(table.querySelectorAll("th"));
+              if (firstThs.length > 0) {
+                for (const th of firstThs) {
+                  headers.push((th.textContent || "").trim());
+                }
+              }
+              const rows = tableToRows(table);
+              // Filter out header row if we already extracted headers
+              const filteredRows = rows.filter((row, idx) => {
+                if (!headers.length) return true;
+                const tr = table.querySelectorAll("tr")[idx];
+                if (!tr) return true;
+                const cells = Array.from(tr.querySelectorAll("td,th"));
+                return !cells.every((c) => c.tagName.toLowerCase() === "th");
+              });
+              return headers.length > 0
+                ? { headers, rows: filteredRows }
+                : filteredRows;
+            }
+            node = node.nextElementSibling;
+          }
+          return [];
+        }
+
+        function findAssets() {
+          const anchors = Array.from(doc.querySelectorAll("a[href]"));
+          return anchors
+            .filter(
+              (a) =>
+                a.href.endsWith(".pdf") ||
+                a.href.endsWith(".java") ||
+                /tree/i.test(a.href)
+            )
+            .map((a) => ({
+              name: (a.textContent || a.href).trim(),
+              url: a.href,
+            }));
+        }
+
+        const data = {
+          metadata: { fetched_at: new Date().toISOString(), source: url },
+          active_hashes: parseActiveHashes(),
+          longest_chain: parseLongestChain(),
+          summary: parseSummary(),
+          assets: findAssets(),
+        };
+
+        // Try to find difficulty information anywhere on the page
+        try {
+          // First, look in the body text for "Difficulty:" followed by info
+          const bodyText = doc.body.textContent || "";
+          const diffMatch = bodyText.match(
+            /Difficulty\s*:?\s*([^<\n]+(?:Bit|bit)[^<\n]*)/i
+          );
+          if (diffMatch) {
+            data.difficulty = diffMatch[0].trim();
+            console.log("Found difficulty in page text:", data.difficulty);
+          }
+        } catch (e) {
+          console.error("Error finding difficulty in page:", e);
+        }
+
+        // derive difficulty from summary if possible (fallback)
+        if (!data.difficulty) {
+          try {
+            const summary = data.summary;
+            let rows = [];
+            if (summary && Array.isArray(summary)) {
+              rows = summary;
+            } else if (summary && summary.rows) {
+              rows = summary.rows;
+            }
+            for (const r of rows) {
+              const cells = r.cells || [];
+              if (cells.length >= 2) {
+                const k = (cells[0] || "").toLowerCase();
+                if (k.includes("difficulty") || k.startsWith("diff")) {
+                  data.difficulty = cells[1];
+                  console.log(
+                    "Extracted difficulty from summary:",
+                    data.difficulty
+                  );
+                  break;
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Error extracting difficulty:", e);
+          }
+        }
+        console.log("Final data object:", data);
+        return data;
+      }
+
       async function loadState() {
         setStatus("loading /state...");
         try {
@@ -71,40 +353,74 @@
           if (!r.ok) throw new Error("no state");
           const j = await r.json();
           render(j);
+          // show fetched_at if present
+          const fetched = j.metadata?.fetched_at || null;
           setStatus(
-            "loaded " + (j.active_hashes?.length || 0) + " active hashes"
+            (fetched ? `snapshot from ${fetched}` : "loaded snapshot") +
+              " — " +
+              (j.active_hashes?.length || 0) +
+              " active hashes"
           );
         } catch (e) {
           document.getElementById("active").innerHTML =
-            '<em>state missing — press "Fetch fresh data"</em>';
+            '<em>state missing — press "Fetch fresh data" (only works when running the server)</em>';
           setStatus("no state");
         }
       }
 
       async function scrapeNow() {
-        setStatus("scraping...");
-        const r = await fetch("/scrape", { method: "POST" });
-        if (!r.ok) {
-          setStatus("scrape failed");
-          return;
+        // Client-side live scrape (works from the visitor's browser). Uses optional ?proxy= param.
+        setStatus("attempting client-side fetch...");
+        // Use a default CORS proxy if none specified
+        const proxy = qp("proxy") || "https://corsproxy.io/?";
+        try {
+          const data = await fetchRemoteState({
+            url: "http://hash.h10a.de/",
+            corsProxy: proxy,
+          });
+          render(data);
+          setStatus(
+            "live fetch OK — snapshot from " +
+              (data.metadata?.fetched_at || "now")
+          );
+        } catch (err) {
+          console.warn("client-side scrape failed", err);
+          setStatus("live fetch failed - try a different proxy");
         }
-        const j = await r.json();
-        setStatus("scrape ok — " + JSON.stringify(j));
-        await loadState();
       }
 
-      function mkTable(rows) {
-        if (!rows || rows.length === 0) return "<em>no rows</em>";
+      function mkTable(data, headers) {
+        // data can be either an array of rows, or an object {headers, rows}
+        let rows = data || [];
+        if (!rows) return "<em>no rows</em>";
+        if (Array.isArray(rows) && rows.length === 0) return "<em>no rows</em>";
+        if (rows && !Array.isArray(rows) && rows.rows) {
+          headers = rows.headers || headers;
+          rows = rows.rows;
+        }
+        if (!Array.isArray(rows) || rows.length === 0)
+          return "<em>no rows</em>";
+
         const cols = rows[0].cells
           ? rows[0].cells.length
           : Math.max(...rows.map((r) => Object.keys(r).length));
         let html = "<table><thead><tr>";
-        for (let i = 0; i < cols; i++) html += `<th>c${i + 1}</th>`;
+        if (headers && headers.length) {
+          for (let h of headers) html += `<th>${h}</th>`;
+        } else {
+          for (let i = 0; i < cols; i++) html += `<th>c${i + 1}</th>`;
+        }
         html += "</tr></thead><tbody>";
         for (const r of rows) {
           const cells = r.cells || [];
+          const colors = r.cell_colors || [];
           html += "<tr>";
-          for (let i = 0; i < cols; i++) html += `<td>${cells[i] ?? ""}</td>`;
+          for (let i = 0; i < cols; i++) {
+            const txt = cells[i] ?? "";
+            const bg = colors[i];
+            const style = bg ? ` style="background:${bg};"` : "";
+            html += `<td${style}>${txt}</td>`;
+          }
           html += "</tr>";
         }
         html += "</tbody></table>";
@@ -112,6 +428,8 @@
       }
 
       function render(j) {
+        console.log("Rendering with data:", j);
+        console.log("Difficulty value:", j.difficulty);
         document.getElementById("active").innerHTML = mkTable(
           j.active_hashes || []
         );
@@ -119,21 +437,164 @@
         let chHtml = "";
         if (chain.root_hash)
           chHtml += `<p><strong>Root:</strong> <code>${chain.root_hash}</code></p>`;
-        chHtml += mkTable(chain.entries || []);
+        // chain.entries may be an array or an object with headers
+        chHtml += mkTable(chain.entries || [], chain.headers || null);
         document.getElementById("chain").innerHTML = chHtml;
-        document.getElementById("summary").innerHTML = mkTable(j.summary || []);
+        // summary may be array or {headers, rows}
+        document.getElementById("summary").innerHTML = mkTable(
+          j.summary || [],
+          j.summary?.headers || null
+        );
         const assets = j.assets || [];
         document.getElementById("assets").innerHTML = assets
           .map(
             (a) => `<div><a href="${a.url}" target="_blank">${a.name}</a></div>`
           )
           .join("");
+        // display difficulty if available
+        const diffEl = document.getElementById("difficulty");
+        if (diffEl) {
+          let d = j.difficulty || j.summary?.difficulty || null;
+          if (d) {
+            // Check if difficulty string already has "Difficulty:" prefix
+            if (d.toLowerCase().includes("difficulty")) {
+              // Just display as-is
+              diffEl.textContent = d;
+            } else {
+              // Add the prefix
+              diffEl.textContent = `Difficulty: ${d}`;
+            }
+          } else {
+            diffEl.textContent = "";
+          }
+        }
       }
 
       document.getElementById("btnScrape").addEventListener("click", scrapeNow);
       document.getElementById("btnReload").addEventListener("click", loadState);
 
-      loadState();
+      // Proxy switching functionality
+      function switchProxy(proxyUrl) {
+        const url = new URL(window.location.href);
+        if (proxyUrl) {
+          url.searchParams.set("proxy", proxyUrl);
+        } else {
+          url.searchParams.delete("proxy");
+        }
+        window.location.href = url.toString();
+      }
+
+      document
+        .getElementById("btnProxyCorsProxy")
+        .addEventListener("click", () => {
+          switchProxy("https://corsproxy.io/?");
+        });
+
+      document
+        .getElementById("btnProxyAllOrigins")
+        .addEventListener("click", () => {
+          switchProxy("https://api.allorigins.win/raw?url=");
+        });
+
+      document.getElementById("btnProxyNone").addEventListener("click", () => {
+        switchProxy("");
+      });
+
+      // Display current proxy info
+      (function updateProxyInfo() {
+        const proxyParam = qp("proxy");
+        // For display and button highlighting, if no param exists, treat as "no proxy"
+        // (the fetch function will use default internally)
+        const proxyEl = document.getElementById("proxyInfo");
+        if (proxyEl) {
+          let displayProxy = "";
+          if (proxyParam === null) {
+            displayProxy = "corsproxy.io (default)";
+          } else if (proxyParam === "https://corsproxy.io/?") {
+            displayProxy = "corsproxy.io";
+          } else if (proxyParam === "https://api.allorigins.win/raw?url=") {
+            displayProxy = "allorigins.win";
+          } else if (proxyParam === "") {
+            displayProxy = "Direct (no proxy)";
+          } else {
+            displayProxy = proxyParam;
+          }
+          proxyEl.innerHTML = `<code>${displayProxy}</code>`;
+        }
+
+        // Highlight active button
+        const buttons = {
+          btnProxyCorsProxy: "https://corsproxy.io/?",
+          btnProxyAllOrigins: "https://api.allorigins.win/raw?url=",
+          btnProxyNone: "",
+        };
+
+        for (const [btnId, btnProxy] of Object.entries(buttons)) {
+          const btn = document.getElementById(btnId);
+          if (btn) {
+            // Match based on actual proxy parameter value
+            let isActive = false;
+            if (proxyParam === null) {
+              // No proxy param in URL = default (corsproxy)
+              isActive = btnProxy === "https://corsproxy.io/?";
+            } else {
+              // Explicit proxy param (including empty string for "no proxy")
+              isActive = proxyParam === btnProxy;
+            }
+
+            if (isActive) {
+              btn.style.background = "#4a90e2";
+              btn.style.color = "white";
+              btn.style.fontWeight = "bold";
+            } else {
+              btn.style.background = "";
+              btn.style.color = "";
+              btn.style.fontWeight = "";
+            }
+          }
+        }
+      })();
+
+      // Detect whether a server-side /scrape endpoint exists. We do a harmless GET
+      // request: if it returns 404, the endpoint is not present on this host (e.g., GitHub Pages).
+      // If it returns 405 (method not allowed) or 200, a server is present.
+      // For static-only hosting: try a client-side fetch first, then fall back to /state snapshot if present.
+      (async function doInitialFetch() {
+        // Use a default CORS proxy if none specified
+        const proxy = qp("proxy") || "https://corsproxy.io/?";
+        setStatus("attempting client-side fetch (no backend)...");
+        try {
+          const data = await fetchRemoteState({
+            url: "http://hash.h10a.de/",
+            corsProxy: proxy,
+          });
+          render(data);
+          setStatus(
+            "live fetch OK — snapshot from " +
+              (data.metadata?.fetched_at || "now")
+          );
+          document.getElementById("btnScrape").disabled = false;
+          return;
+        } catch (err) {
+          console.warn("client-side fetch failed", err);
+          // try loading a deployed snapshot (if present) at /state
+          try {
+            await loadState();
+            return;
+          } catch (e) {
+            // no snapshot; show helpful note and keep scrape button enabled for client attempt
+            const btn = document.getElementById("btnScrape");
+            btn.disabled = false;
+            const note = document.createElement("div");
+            note.style.marginTop = "6px";
+            note.style.color = "#666";
+            note.innerHTML =
+              "Live client-side fetch failed. Trying with default CORS proxy (corsproxy.io). You can use a different proxy via <code>?proxy=https://your-proxy-url/?</code> query parameter.";
+            btn.parentNode.insertBefore(note, btn.nextSibling);
+            setStatus("no snapshot and live fetch failed");
+          }
+        }
+      })();
     </script>
   </body>
 </html>

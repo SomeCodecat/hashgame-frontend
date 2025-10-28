@@ -33,13 +33,25 @@ export async function fetchRemoteState({
 
   function tableToRows(table) {
     const rows = [];
+    // headers from first row if th present
+    const ths = Array.from(table.querySelectorAll("th"));
+    const headers = ths.length
+      ? ths.map((th) => (th.textContent || "").trim())
+      : null;
     for (const tr of Array.from(table.querySelectorAll("tr"))) {
-      const cells = Array.from(tr.querySelectorAll("th,td")).map((td) =>
-        (td.textContent || "").trim()
+      const cellsEls = Array.from(tr.querySelectorAll("th,td"));
+      const cells = cellsEls.map((td) => (td.textContent || "").trim());
+      const cell_colors = cellsEls.map(
+        (td) =>
+          td.getAttribute("bgcolor") ||
+          (td.getAttribute("style") || "").match(
+            /background(?:-color)?\s*:\s*([^;]+)/i
+          )?.[1] ||
+          null
       );
-      if (cells.length) rows.push({ cells });
+      if (cells.length) rows.push({ cells, cell_colors });
     }
-    return rows;
+    return headers ? { headers, rows } : rows;
   }
 
   function parseActiveHashes() {
@@ -74,7 +86,10 @@ export async function fetchRemoteState({
       const m = text.match(/([0-9a-f]{64})/i);
       if (m && !root) root = m[1];
       if (node.tagName && node.tagName.toLowerCase() === "table") {
-        return { root_hash: root, entries: tableToRows(node) };
+        const t = tableToRows(node);
+        if (t.headers)
+          return { root_hash: root, entries: t.rows, headers: t.headers };
+        return { root_hash: root, entries: t };
       }
       node = node.nextElementSibling;
     }
@@ -86,8 +101,11 @@ export async function fetchRemoteState({
     if (!heading) return [];
     let node = heading.nextElementSibling;
     while (node) {
-      if (node.tagName && node.tagName.toLowerCase() === "table")
-        return tableToRows(node);
+      if (node.tagName && node.tagName.toLowerCase() === "table") {
+        const t = tableToRows(node);
+        if (t.headers) return { headers: t.headers, rows: t.rows };
+        return t;
+      }
       node = node.nextElementSibling;
     }
     return [];
@@ -112,5 +130,69 @@ export async function fetchRemoteState({
     summary: parseSummary(),
     assets: findAssets(),
   };
+  // If not found in summary, look for a difficulty-like line in the HTML text (heuristic).
+  try {
+    if (!data.difficulty) {
+      const text = doc.body.textContent || "";
+      const lines = text
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+      // explicit 'Difficulty' lines
+      for (const line of lines) {
+        if (line.toLowerCase().includes("difficulty")) {
+          data.difficulty = line;
+          break;
+        }
+      }
+      // fallback: look for a line containing 'Bit' and 'SHA' or 'GHash' or 's/block'
+      if (!data.difficulty) {
+        for (const line of lines) {
+          const ll = line.toLowerCase();
+          if (
+            ll.includes("bit") &&
+            (ll.includes("sha") ||
+              ll.includes("ghash") ||
+              ll.includes("s/block"))
+          ) {
+            data.difficulty = line;
+            break;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+  // derive difficulty from summary if possible
+  try {
+    const summary = data.summary;
+    let rows = [];
+    if (summary && Array.isArray(summary)) rows = summary;
+    else if (summary && summary.rows) rows = summary.rows;
+    for (const r of rows) {
+      const cells = r.cells || [];
+      if (cells.length >= 2) {
+        const k = (cells[0] || "").toLowerCase();
+        if (k.includes("difficulty") || k.startsWith("diff")) {
+          data.difficulty = cells[1];
+          break;
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+  // Normalize difficulty string so it doesn't include a leading label
+  try {
+    if (typeof data.difficulty === "string") {
+      data.difficulty = data.difficulty
+        .replace(/^\s*Difficulty\s*[:\-]?\s*/i, "")
+        .trim();
+      if (!data.difficulty) delete data.difficulty;
+    }
+  } catch (e) {
+    // ignore
+  }
   return data;
 }

@@ -1,0 +1,70 @@
+name: Build and deploy frontend to GitHub Pages (static-only)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Scrape latest data
+        run: |
+          python scrape_hash_h10a.py
+
+      - name: Build frontend
+        run: |
+          if [ -d frontend ]; then
+            cd frontend
+            npm ci
+            npm run build
+          fi
+
+      - name: Prepare deploy directory
+        run: |
+          rm -rf out
+          mkdir out
+          if [ -d frontend/dist ]; then
+            cp -a frontend/dist/. out/
+          else
+            cp -a static/. out/
+          fi
+          # Copy the scraped state.json to be available at /state
+          if [ -f data/state.json ]; then
+            cp data/state.json out/state.json
+          fi
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./out
+          publish_branch: gh-pages
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"
+          keep_files: false
